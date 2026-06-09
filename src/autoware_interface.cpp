@@ -5,8 +5,13 @@ namespace autoware_interface_ns {
 AutowareInterface::AutowareInterface()
     : Node("autoware_interface") {
     /* From Autoware */
+    /*IRL*/
     AW_command_sub_ = this->create_subscription<autoware_auto_control_msgs::msg::AckermannControlCommand>(
         "/control/command/control_cmd", rclcpp::QoS(1), std::bind(&AutowareInterface::aw_cmd_callback, this, std::placeholders::_1));
+        
+    /*Simulation*/  //260523 LJH dyno mode
+    // AW_command_sub_ = this->create_subscription<autoware_auto_control_msgs::msg::AckermannControlCommand>(
+        // "/control/command/control_cmd", rclcpp::QoS(1), std::bind(&AutowareInterface::aw_cmd_callback, this, std::placeholders::_1));
 
     /* From CANMessageHandler */
     speed_status_sub_ = this->create_subscription<std_msgs::msg::Float64>(
@@ -25,6 +30,9 @@ AutowareInterface::AutowareInterface()
         "/vehicle/status/steering_status", rclcpp::QoS(1));
     AW_control_mode_pub_ = this->create_publisher<autoware_auto_vehicle_msgs::msg::ControlModeReport>(
         "/vehicle/status/control_mode", rclcpp::QoS(1));
+    AW_control_cmd_sim_pub_ = this->create_publisher<autoware_auto_control_msgs::msg::AckermannControlCommand>( //260523 LJH dyno mode
+        "/control/command/control_cmd_sim", rclcpp::QoS(1));    //260523 LJH dyno mode
+    clock_pub_ = this->create_publisher<rosgraph_msgs::msg::Clock>("/clock", rclcpp::QoS(1));
     AW_stop_client_ = this->create_client<autoware_adapi_v1_msgs::srv::ChangeOperationMode>("/api/operation_mode/change_to_stop");
     auto_mode_client_ = this->create_client<autoware_adapi_v1_msgs::srv::ChangeOperationMode>("/api/operation_mode/change_to_autonomous");
 
@@ -40,8 +48,8 @@ AutowareInterface::AutowareInterface()
 }
 
 void AutowareInterface::aw_cmd_callback(const autoware_auto_control_msgs::msg::AckermannControlCommand::SharedPtr msg) {
-    // speed_command_ = msg->longitudinal.speed;
-    // angle_command_ = msg->lateral.steering_tire_angle;
+    speed_command_ = msg->longitudinal.speed;
+    angle_command_ = msg->lateral.steering_tire_angle;
 
     std_msgs::msg::Float64 TC_velocity_cmd_msg;
     std_msgs::msg::Float64 TC_steer_cmd_msg;
@@ -67,7 +75,11 @@ void AutowareInterface::vehicle_mode_status_callback(const std_msgs::msg::Bool::
 
 void AutowareInterface::timer_callback() {
     // To Autoware
-    auto now = this->now();
+    const auto now = system_clock_.now();
+
+    rosgraph_msgs::msg::Clock clock_msg;
+    clock_msg.clock = now;
+    clock_pub_->publish(clock_msg);
 
     autoware_auto_vehicle_msgs::msg::VelocityReport velocity_report_msg;
     velocity_report_msg.header.stamp = now;
@@ -85,6 +97,25 @@ void AutowareInterface::timer_callback() {
     // Mode 1 corresponds to AUTONOMOUS
     control_mode_msg.mode = autoware_auto_vehicle_msgs::msg::ControlModeReport::AUTONOMOUS;
     AW_control_mode_pub_->publish(control_mode_msg);
+
+    autoware_auto_control_msgs::msg::AckermannControlCommand control_cmd_msg;   //260523 LJH dyno mode
+    /*IRL*/
+    // control_cmd_msg.longitudinal.speed = speed_command_;
+    // control_cmd_msg.lateral.steering_tire_angle = angle_command_;
+
+    // AW_control_cmd_pub_->publish(control_cmd_msg);
+
+    /*IRL*/
+
+    /*260526LJH dyno mode*/
+    control_cmd_msg.stamp = now;
+    control_cmd_msg.longitudinal.stamp = now;
+    control_cmd_msg.lateral.stamp = now;
+    control_cmd_msg.longitudinal.speed = vehicle_speed_;
+    control_cmd_msg.lateral.steering_tire_angle = steering_angle_;
+    
+    AW_control_cmd_sim_pub_->publish(control_cmd_msg);
+    /*260526LJH dyno mode*/
 
 
     // To TwistController

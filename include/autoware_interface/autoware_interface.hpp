@@ -9,6 +9,7 @@
 #include "autoware_auto_vehicle_msgs/msg/control_mode_report.hpp"
 #include "autoware_auto_vehicle_msgs/msg/steering_report.hpp"
 #include "autoware_auto_vehicle_msgs/msg/velocity_report.hpp"
+#include "rosgraph_msgs/msg/clock.hpp"
 #include "std_msgs/msg/bool.hpp"
 #include "std_msgs/msg/float64.hpp"
 #include "std_msgs/msg/int32.hpp"
@@ -41,6 +42,9 @@ private:
     rclcpp::Publisher<autoware_auto_vehicle_msgs::msg::VelocityReport>::SharedPtr AW_velocity_pub_;
     rclcpp::Publisher<autoware_auto_vehicle_msgs::msg::SteeringReport>::SharedPtr AW_steering_pub_;
     rclcpp::Publisher<autoware_auto_vehicle_msgs::msg::ControlModeReport>::SharedPtr AW_control_mode_pub_;
+    rclcpp::Publisher<autoware_auto_control_msgs::msg::AckermannControlCommand>::SharedPtr AW_control_cmd_pub_;
+    rclcpp::Publisher<autoware_auto_control_msgs::msg::AckermannControlCommand>::SharedPtr AW_control_cmd_sim_pub_; //260523 LJH
+    rclcpp::Publisher<rosgraph_msgs::msg::Clock>::SharedPtr clock_pub_;
     rclcpp::Publisher<std_msgs::msg::Float64>::SharedPtr TC_velocity_cmd_pub_;
     rclcpp::Publisher<std_msgs::msg::Float64>::SharedPtr TC_steer_cmd_pub_;
 
@@ -54,9 +58,12 @@ private:
     // Member variables
     double speed_command_ = 0.0;
     double angle_command_ = 0.0;
+    double speed_command_sim_ = 0.0;    //260523 LJH
+    double angle_command_sim_ = 0.0;
     double vehicle_speed_ = 0.0;
     double steering_angle_ = 0.0;
     bool vehicle_mode_status_ = 0;
+    rclcpp::Clock system_clock_{RCL_SYSTEM_TIME};
 };
 
 } // namespace autoware_interface_ns
